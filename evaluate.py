@@ -27,8 +27,8 @@ def metric(y_tru, y_hat):
 
     micro_acc = np.sum(true_positives) / (np.sum(false_positives) + np.sum(true_positives))
     macro_acc = np.sum(pr)
-    print("micro accuracy:", micro_acc)
-    print("macro accuracy:", macro_acc)
+    print("\tmicro accuracy:", micro_acc)
+    print("\tmacro accuracy:", macro_acc)
 
     return micro_acc, macro_acc
 
@@ -61,8 +61,8 @@ def test_roberta(model, tokenizer):
         progress_bar.update(1)
 
     accuracy = accuracy.compute()
-    print(accuracy)
-    print("loss", np.mean(loss))
+    # print(accuracy)
+    # print("loss", np.mean(loss))
     micro, macro = metric(y_tru, y_hat)
     return accuracy["accuracy"], np.mean(loss), micro, macro
 
@@ -74,14 +74,22 @@ if __name__ == '__main__':
 
     results = []
     for i in range(10):
+        print("Fold {}:".format(i+1))
         t = AutoTokenizer.from_pretrained(Path(data_location, "bank-classifier-roberta-fold-{}".format(i+1)))
         m = AutoModelForSequenceClassification.from_pretrained(Path(data_location, "bank-classifier-roberta-fold-{}".format(i+1)), num_labels=num_classes)
         a, l, mi, ma = test_roberta(m, t)
 
-        results.append({"micro": mi*100, "macro": ma * 100, "loss": l, "accuracy": a * 100})
+        results.append({"fold": i+1, "micro": mi*100, "macro": ma * 100, "loss": l, "accuracy": a * 100})
+        break
 
     df = pd.DataFrame(results)
     df['micro'] = df['micro'].apply(lambda x: round(x, 2))
     df['macro'] = df['macro'].apply(lambda x: round(x, 2))
     df['accuracy'] = df['accuracy'].apply(lambda x: round(x, 2))
+
+    df.sort_values(by=["macro", "accuracy"], inplace=True)
+
     df.to_csv(Path(data_location, "test_accuracy.csv"), index=False)
+
+    print("\n\nbest folds - ")
+    print(df[["fold", "macro", "accuracy", "loss"]])
